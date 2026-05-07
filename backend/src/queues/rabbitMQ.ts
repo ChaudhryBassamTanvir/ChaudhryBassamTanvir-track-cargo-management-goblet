@@ -1,20 +1,21 @@
-const amqp = require('amqplib');
-const logger = require('../config/logger');
+import amqp, { Channel } from 'amqplib';
+import logger from '../config/logger';
 
-let channel = null;
+let channel: Channel | null = null;
 
-const QUEUES = {
+export const QUEUES = {
   CARGO_EVENTS: 'cargo.events',
   ROUTE_EVENTS: 'route.events',
   ALERTS: 'alerts',
   DEAD_LETTER: 'dead.letter'
-};
+} as const;
 
-const connect = async () => {
-  const conn = await amqp.connect(process.env.RABBITMQ_URL);
+export type QueueName = typeof QUEUES[keyof typeof QUEUES];
+
+export const connect = async (): Promise<Channel> => {
+  const conn = await amqp.connect(process.env.RABBITMQ_URL as string);
   channel = await conn.createChannel();
 
-  // Declare all queues with dead-letter routing
   for (const q of Object.values(QUEUES)) {
     await channel.assertQueue(q, {
       durable: true,
@@ -29,27 +30,23 @@ const connect = async () => {
   return channel;
 };
 
-// Reusable publish
-const publish = (queue, message) => {
+export const publish = (queue: QueueName, message: unknown): void => {
   if (!channel) throw new Error('RabbitMQ not connected');
   channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)), { persistent: true });
-  logger.info(`Published to ${queue}`, message);
+  logger.info(`Published to ${queue}`);
 };
 
-// Reusable consume
-const consume = (queue, handler) => {
+export const consume = (queue: QueueName, handler: (data: unknown) => Promise<void>): void => {
   if (!channel) throw new Error('RabbitMQ not connected');
   channel.consume(queue, async (msg) => {
     if (!msg) return;
     try {
-      const data = JSON.parse(msg.content.toString());
+      const data: unknown = JSON.parse(msg.content.toString());
       await handler(data);
-      channel.ack(msg);
+      channel!.ack(msg);
     } catch (err) {
       logger.error(`Worker error on ${queue}`, err);
-      channel.nack(msg, false, false); // send to dead-letter
+      channel!.nack(msg, false, false);
     }
   });
 };
-
-module.exports = { connect, publish, consume, QUEUES };

@@ -1,29 +1,26 @@
-const { Server } = require('socket.io');
-const logger = require('../config/logger');
+import { Server, Socket } from 'socket.io';
+import { Server as HttpServer } from 'http';
+import logger from '../config/logger';
 
-let io = null;
+let io: Server | null = null;
 
-const init = (httpServer) => {
+export const init = (httpServer: HttpServer): Server => {
   io = new Server(httpServer, {
     cors: { origin: process.env.FRONTEND_URL, methods: ['GET', 'POST'] }
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', (socket: Socket) => {
     logger.info(`Socket connected: ${socket.id}`);
-
-    socket.on('subscribe', (room) => socket.join(room));
-    socket.on('unsubscribe', (room) => socket.leave(room));
+    socket.on('subscribe', (room: string) => socket.join(room));
+    socket.on('unsubscribe', (room: string) => socket.leave(room));
     socket.on('disconnect', () => logger.info(`Socket disconnected: ${socket.id}`));
   });
 
   return io;
 };
 
-// Reusable emitter
-const emit = (event, room, data) => {
+export const emit = (event: string, room: string | null, data: unknown): void => {
   if (!io) return;
   if (room) io.to(room).emit(event, data);
   else io.emit(event, data);
 };
-
-module.exports = { init, emit };

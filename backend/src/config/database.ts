@@ -1,29 +1,23 @@
-const mongoose = require('mongoose');
-const logger = require('./logger');
+import mongoose from 'mongoose';
+import logger from './logger';
+import { DbChangeEvent } from '../types';
 
-let changeStreamEmitter = null;
-
-const connect = async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
+export const connect = async (): Promise<void> => {
+  await mongoose.connect(process.env.MONGODB_URI as string);
   logger.info('MongoDB connected');
 };
 
-// DB trigger — watches ALL changes and emits to queue/socket
-const watchChanges = (onEvent) => {
+export const watchChanges = (onEvent: (event: DbChangeEvent) => void): void => {
   const db = mongoose.connection.db;
   const changeStream = db.watch([], { fullDocument: 'updateLookup' });
 
-  changeStream.on('change', (event) => {
+  changeStream.on('change', (event: DbChangeEvent) => {
     logger.info(`DB trigger: ${event.operationType} on ${event.ns?.coll}`);
     onEvent(event);
   });
 
-  changeStream.on('error', (err) => {
+  changeStream.on('error', (err: Error) => {
     logger.error('Change stream error', err);
-    setTimeout(() => watchChanges(onEvent), 3000); // auto-restart
+    setTimeout(() => watchChanges(onEvent), 3000);
   });
-
-  return changeStream;
 };
-
-module.exports = { connect, watchChanges };

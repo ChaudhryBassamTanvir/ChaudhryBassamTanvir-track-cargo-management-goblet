@@ -14,7 +14,7 @@
 /coverage
 
 # next.js
-frontend/.next/
+/frontend/.next/
 /out/
 
 # production
@@ -44,3 +44,6 @@ next-env.d.ts
 
 /backend/.env
 /backend/.env*
+/backend/node_modules
+/backend/.next/
+/backend/build/

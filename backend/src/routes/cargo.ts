@@ -1,17 +1,18 @@
-const express = require('express');
-const router = express.Router();
-const Cargo = require('../models/Cargo');
-const { publish, QUEUES } = require('../queues/rabbitMQ');
-const logger = require('../config/logger');
+import { Router, Request, Response, NextFunction } from 'express';
+import Cargo from '../models/Cargo';
+import { publish, QUEUES } from '../queues/rabbitMQ';
 
-// Reusable error handler
-const handle = (fn) => (req, res, next) => fn(req, res, next).catch(next);
+const router = Router();
+
+type Handler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+const handle = (fn: Handler) => (req: Request, res: Response, next: NextFunction) =>
+  fn(req, res, next).catch(next);
 
 router.get('/', handle(async (req, res) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = '1', limit = '20' } = req.query as Record<string, string>;
   const filter = status ? { status } : {};
   const cargo = await Cargo.find(filter).populate('truck')
-    .skip((page - 1) * limit).limit(+limit).sort({ createdAt: -1 });
+    .skip((+page - 1) * +limit).limit(+limit).sort({ createdAt: -1 });
   res.json({ data: cargo, page: +page });
 }));
 
@@ -22,13 +23,13 @@ router.post('/', handle(async (req, res) => {
 }));
 
 router.patch('/:id/status', handle(async (req, res) => {
-  const { status, notes } = req.body;
+  const { status, notes } = req.body as { status: string; notes?: string };
   const cargo = await Cargo.findByIdAndUpdate(
     req.params.id,
     { status, $push: { events: { action: status, notes } } },
     { new: true }
   );
-  publish(QUEUES.CARGO_EVENTS, { type: 'STATUS_UPDATE', cargoId: cargo._id, payload: { status, notes } });
+  publish(QUEUES.CARGO_EVENTS, { type: 'STATUS_UPDATE', cargoId: req.params.id, payload: { status, notes } });
   res.json(cargo);
 }));
 
@@ -37,4 +38,4 @@ router.delete('/:id', handle(async (req, res) => {
   res.json({ success: true });
 }));
 
-module.exports = router;
+export default router;
