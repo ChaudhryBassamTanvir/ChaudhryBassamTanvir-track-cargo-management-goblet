@@ -1,0 +1,16 @@
+/
+├── frontend/          ← your Next.js app
+│   ├── app/page.tsx
+│   ├── components/
+│   └── lib/
+└── backend/
+    ├── src/
+    │   ├── config/
+    │   ├── models/
+    │   ├── routes/
+    │   ├── workers/
+    │   ├── queues/
+    │   ├── socket/
+    │   └── middleware/
+    ├── nginx/
+    └── docker-compose.yml
