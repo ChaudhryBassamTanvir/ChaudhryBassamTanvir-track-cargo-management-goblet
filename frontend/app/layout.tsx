@@ -1,73 +1,183 @@
 'use client';
+
+import './globals.css';
+
+import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import {
+  FiGrid,
+  FiBox,
+  FiTruck,
+  FiUsers,
+  FiMapPin,
+  FiBarChart2,
+  FiLogOut,
+} from 'react-icons/fi';
+
 const NAV = [
-  { href: '/', label: 'Dashboard', icon: '▦' },
-  { href: '/cargo', label: 'Cargo', icon: '📦' },
-  { href: '/trucks', label: 'Trucks', icon: '🚛' },
-  { href: '/drivers', label: 'Drivers', icon: '👤' },
-  { href: '/tracking', label: 'Live Tracking', icon: '📍' },
-  { href: '/reports', label: 'Reports', icon: '📊' },
+  {
+    href: '/',
+    label: 'Dashboard',
+    icon: FiGrid,
+  },
+  {
+    href: '/cargo',
+    label: 'Cargo',
+    icon: FiBox,
+  },
+  {
+    href: '/trucks',
+    label: 'Trucks',
+    icon: FiTruck,
+  },
+  {
+    href: '/drivers',
+    label: 'Drivers',
+    icon: FiUsers,
+  },
+  {
+    href: '/tracking',
+    label: 'Live Tracking',
+    icon: FiMapPin,
+  },
+  {
+    href: '/reports',
+    label: 'Reports',
+    icon: FiBarChart2,
+  },
 ];
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string } | null>(null);
+
+  const [user, setUser] = useState<{
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     const u = localStorage.getItem('goblet_user');
-    if (u) setUser(JSON.parse(u));
+
+    if (u) {
+      setUser(JSON.parse(u));
+    }
   }, []);
 
-  const isAuth = pathname === '/login';
 
   const logout = () => {
     localStorage.removeItem('goblet_token');
     localStorage.removeItem('goblet_user');
+
     router.push('/login');
   };
-
+const authRoutes = ['/login', '/signup'];
+const isAuth = authRoutes.includes(pathname);
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: "'Georgia', serif", background: '#F9FAFB' }}>
-        {isAuth ? children : (
-          <div style={{ display: 'flex', minHeight: '100vh' }}>
-            {/* Sidebar */}
-            <aside style={{
-              width: 220, background: '#0F0F0F', color: '#fff',
-              display: 'flex', flexDirection: 'column', padding: '24px 0', flexShrink: 0,
-              position: 'sticky', top: 0, height: '100vh'
-            }}>
-              <div style={{ padding: '0 20px 28px', borderBottom: '1px solid #222' }}>
-                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.5 }}>🚛 Goblet</div>
-                <div style={{ fontSize: 11, color: '#555', marginTop: 3 }}>Cargo Management</div>
+      <body className="bg-[#F6F8FB] text-slate-900 antialiased">
+        {isAuth ? (
+          children
+        ) : (
+          <div className="flex min-h-screen">
+            
+            {/* SIDEBAR */}
+            <aside className="w-[280px] bg-white border-r border-slate-200 flex flex-col justify-between sticky top-0 h-screen px-6 py-7">
+              
+              <div>
+                
+                {/* LOGO */}
+                <div className="flex items-center gap-4 pb-8 border-b border-slate-100">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
+                    <Image
+                      src="/logo.png"
+                      alt="Goblet"
+                      width={50}
+                      height={50}
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                      Goblet
+                    </h1>
+
+                    <p className="text-sm text-slate-500">
+                      Cargo Management
+                    </p>
+                  </div>
+                </div>
+
+                {/* NAVIGATION */}
+                <nav className="mt-8 space-y-2">
+                  {NAV.map((item) => {
+                    const Icon = item.icon;
+
+                    const active = pathname === item.href;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center gap-4 px-4 h-14 rounded-2xl transition-all duration-200 group
+                        ${
+                          active
+                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Icon
+                          className={`text-xl ${
+                            active
+                              ? 'text-white'
+                              : 'text-slate-500'
+                          }`}
+                        />
+
+                        <span className="font-medium text-sm">
+                          {item.label}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </nav>
               </div>
-              <nav style={{ padding: '16px 10px', flex: 1 }}>
-                {NAV.map(n => (
-                  <a key={n.href} href={n.href} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: 7, marginBottom: 2,
-                    background: pathname === n.href ? '#1a1a1a' : 'transparent',
-                    color: pathname === n.href ? '#fff' : '#888',
-                    textDecoration: 'none', fontSize: 14, transition: 'all 0.15s'
-                  }}>
-                    <span>{n.icon}</span>{n.label}
-                  </a>
-                ))}
-              </nav>
-              <div style={{ padding: '16px 20px', borderTop: '1px solid #222' }}>
-                <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>{user?.name ?? 'User'}</div>
-                <button onClick={logout} style={{
-                  width: '100%', padding: '7px', background: '#1a1a1a',
-                  color: '#888', border: '1px solid #222', borderRadius: 6,
-                  cursor: 'pointer', fontSize: 12
-                }}>Sign out</button>
+
+              {/* USER */}
+              <div className="border-t border-slate-100 pt-5">
+                <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-4">
+                  
+                  <div>
+                    <p className="text-xs text-slate-400">
+                      Logged in as
+                    </p>
+
+                    <h3 className="font-semibold text-slate-800 mt-1">
+                      {user?.name || 'User'}
+                    </h3>
+                  </div>
+
+                  <button
+                    onClick={logout}
+                    className="w-11 h-11 rounded-xl bg-white border border-slate-200 hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center"
+                  >
+                    <FiLogOut />
+                  </button>
+                </div>
               </div>
             </aside>
-            {/* Main */}
-            <main style={{ flex: 1, overflow: 'auto' }}>{children}</main>
+
+            {/* MAIN */}
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
           </div>
         )}
       </body>
