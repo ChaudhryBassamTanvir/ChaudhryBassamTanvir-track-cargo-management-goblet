@@ -1,146 +1,88 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { api, Cargo, Truck } from './lib/api';
-import { useSocket } from './lib/useSocket';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { api, Summary, TimelinePoint } from '@/lib/api';
+import StatCard from '@/components/StatCard';
+import StatusBadge from '@/components/StatusBadge';
+import { useSocket } from '@/lib/useSocket';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#F59E0B', loaded: '#3B82F6', 'in-transit': '#8B5CF6',
-  delivered: '#10B981', failed: '#EF4444'
-};
-
-export default function HomePage() {
-  const [cargo, setCargo] = useState<Cargo[]>([]);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [filter, setFilter] = useState('');
+export default function DashboardPage() {
+  const router = useRouter();
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [alerts, setAlerts] = useState<string[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ trackingId: '', origin: '', destination: '', weight: '', truckId: '' });
 
-  const load = useCallback(async () => {
-    const [c, t] = await Promise.all([api.getCargo(filter), api.getTrucks()]);
-    setCargo(c.data); setTrucks(t);
-  }, [filter]);
+  useEffect(() => {
+    const token = localStorage.getItem('goblet_token');
+    if (!token) { router.push('/login'); return; }
+    api.getSummary().then(setSummary);
+    api.getTimeline().then(setTimeline);
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Live updates via socket
-  useSocket('cargo:update', (data) => {
-    setCargo(prev => prev.map(c => c._id === data.cargoId ? { ...c, status: data.status } : c));
-    setAlerts(prev => [`${data.cargoId} → ${data.status}`, ...prev].slice(0, 5));
+  useSocket('cargo:update', (d) => {
+    setAlerts(p => [`${d.cargoId} → ${d.status}`, ...p].slice(0, 5));
   });
 
-  useSocket('db:change', (data) => {
-    if (data.op === 'insert' || data.op === 'update') load();
-  });
+  const get = (arr: { _id: string; count: number }[], key: string) =>
+    arr.find(x => x._id === key)?.count ?? 0;
 
-  const submit = async () => {
-    await api.createCargo({ ...form, weight: +form.weight, truck: form.truckId } as any);
-    setShowForm(false); setForm({ trackingId: '', origin: '', destination: '', weight: '', truckId: '' });
-    load();
-  };
-
-  const updateStatus = async (id: string, status: string) => {
-    await api.updateStatus(id, status);
-    load();
-  };
+  const maxCount = Math.max(...timeline.map(t => t.count), 1);
 
   return (
-    <div style={{ fontFamily: "'Georgia', serif", maxWidth: 960, margin: '0 auto', padding: '40px 24px', color: '#1a1a1a' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 40 }}>
-        <h1 style={{ fontSize: 36, fontWeight: 700, margin: 0, letterSpacing: -1 }}>🚛 Cargo Board</h1>
-        <p style={{ color: '#888', marginTop: 6, fontSize: 14 }}>Real-time truck cargo management</p>
+    <div style={{ padding: '40px 36px', maxWidth: 1100 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 6px', letterSpacing: -0.5 }}>Dashboard</h1>
+      <p style={{ color: '#9CA3AF', margin: '0 0 28px', fontSize: 13 }}>Welcome back. Here's what's happening.</p>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
+        <StatCard label="Total Cargo" value={summary?.totalCargo ?? '—'} />
+        <StatCard label="In Transit" value={get(summary?.cargoByStatus ?? [], 'in-transit')} color="#8B5CF6" />
+        <StatCard label="Delivered" value={get(summary?.cargoByStatus ?? [], 'delivered')} color="#10B981" />
+        <StatCard label="Failed" value={get(summary?.cargoByStatus ?? [], 'failed')} color="#EF4444" />
+        <StatCard label="Total Trucks" value={summary?.totalTrucks ?? '—'} color="#3B82F6" />
+        <StatCard label="Total Drivers" value={summary?.totalDrivers ?? '—'} color="#F59E0B" />
       </div>
 
-      {/* Live alerts */}
-      {alerts.length > 0 && (
-        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 16px', marginBottom: 24 }}>
-          {alerts.map((a, i) => <div key={i} style={{ fontSize: 13, color: '#92400E' }}>⚡ {a}</div>)}
-        </div>
-      )}
-
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 24, alignItems: 'center' }}>
-        <select value={filter} onChange={e => setFilter(e.target.value)}
-          style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, background: '#fff' }}>
-          <option value="">All statuses</option>
-          {['pending','loaded','in-transit','delivered','failed'].map(s =>
-            <option key={s} value={s}>{s}</option>
-          )}
-        </select>
-        <button onClick={() => setShowForm(v => !v)}
-          style={{ marginLeft: 'auto', padding: '7px 16px', background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-          + New Cargo
-        </button>
-      </div>
-
-      {/* New Cargo form */}
-      {showForm && (
-        <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 20, marginBottom: 24 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {(['trackingId','origin','destination','weight'] as const).map(k => (
-              <input key={k} placeholder={k} value={form[k]}
-                onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 13 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+        {/* Timeline chart */}
+        <div style={{ background: '#fff', border: '1px solid #F3F4F6', borderRadius: 12, padding: 24 }}>
+          <div style={{ fontWeight: 600, marginBottom: 20, fontSize: 15 }}>Cargo Activity (last 30 days)</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120 }}>
+            {timeline.slice(-20).map((t, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{ width: '100%', background: '#10B981', borderRadius: 3, height: `${(t.delivered / maxCount) * 100}px`, minHeight: t.delivered ? 2 : 0 }} />
+                <div style={{ width: '100%', background: '#E5E7EB', borderRadius: 3, height: `${((t.count - t.delivered) / maxCount) * 100}px`, minHeight: t.count ? 2 : 0 }} />
+              </div>
             ))}
-            <select value={form.truckId} onChange={e => setForm(f => ({ ...f, truckId: e.target.value }))}
-              style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 13 }}>
-              <option value="">Assign truck</option>
-              {trucks.map(t => <option key={t._id} value={t._id}>{t.plateNumber} — {t.driverName}</option>)}
-            </select>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button onClick={submit}
-              style={{ padding: '7px 18px', background: '#10B981', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-              Save
-            </button>
-            <button onClick={() => setShowForm(false)}
-              style={{ padding: '7px 14px', background: 'transparent', border: '1px solid #D1D5DB', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-              Cancel
-            </button>
+          <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#6B7280' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, background: '#10B981', borderRadius: 2, display: 'inline-block' }} />Delivered</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, background: '#E5E7EB', borderRadius: 2, display: 'inline-block' }} />Other</span>
           </div>
         </div>
-      )}
 
-      {/* Cargo Table */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-        <thead>
-          <tr style={{ borderBottom: '2px solid #F3F4F6', color: '#6B7280', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            {['Tracking ID','Origin','Destination','Weight','Truck','Status','Actions'].map(h =>
-              <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 500 }}>{h}</th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {cargo.map(c => (
-            <tr key={c._id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-              <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: 12 }}>{c.trackingId}</td>
-              <td style={{ padding: '12px' }}>{c.origin}</td>
-              <td style={{ padding: '12px' }}>{c.destination}</td>
-              <td style={{ padding: '12px' }}>{c.weight} kg</td>
-              <td style={{ padding: '12px', fontSize: 12 }}>{c.truck?.plateNumber || '—'}</td>
-              <td style={{ padding: '12px' }}>
-                <span style={{ background: STATUS_COLORS[c.status] + '22', color: STATUS_COLORS[c.status],
-                  padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500 }}>
-                  {c.status}
-                </span>
-              </td>
-              <td style={{ padding: '12px' }}>
-                <select onChange={e => updateStatus(c._id, e.target.value)} defaultValue=""
-                  style={{ fontSize: 12, padding: '4px 8px', borderRadius: 5, border: '1px solid #E5E7EB' }}>
-                  <option value="" disabled>Update</option>
-                  {['loaded','in-transit','delivered','failed'].map(s =>
-                    <option key={s} value={s}>{s}</option>
-                  )}
-                </select>
-              </td>
-            </tr>
-          ))}
-          {cargo.length === 0 && (
-            <tr><td colSpan={7} style={{ padding: 32, textAlign: 'center', color: '#9CA3AF' }}>No cargo yet. Add some above.</td></tr>
+        {/* Recent cargo + live alerts */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {alerts.length > 0 && (
+            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#92400E', marginBottom: 8 }}>⚡ Live Events</div>
+              {alerts.map((a, i) => <div key={i} style={{ fontSize: 12, color: '#78350F', lineHeight: 1.8 }}>{a}</div>)}
+            </div>
           )}
-        </tbody>
-      </table>
+          <div style={{ background: '#fff', border: '1px solid #F3F4F6', borderRadius: 12, padding: 20, flex: 1 }}>
+            <div style={{ fontWeight: 600, marginBottom: 14, fontSize: 14 }}>Recent Cargo</div>
+            {summary?.recentCargo.map(c => (
+              <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{c.trackingId}</div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF' }}>{c.origin} → {c.destination}</div>
+                </div>
+                <StatusBadge status={c.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

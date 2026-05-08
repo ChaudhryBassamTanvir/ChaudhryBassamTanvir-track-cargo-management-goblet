@@ -13,7 +13,18 @@ import * as alertWorker from './workers/alertWorker';
 import * as recoveryWorker from './workers/recoveryWorker';
 import cargoRoutes from './routes/cargo';
 import truckRoutes from './routes/trucks';
+import authRoutes from './routes/auth';
+import driverRoutes from './routes/drivers';
+import analyticsRoutes from './routes/analytics';
+import { protect } from './middleware/auth';
 
+// add after existing routes
+app.use('/api/auth', authRoutes);
+app.use('/api/drivers', protect, driverRoutes);
+app.use('/api/analytics', protect, analyticsRoutes);
+// also protect existing routes:
+app.use('/api/cargo', protect, cargoRoutes);
+app.use('/api/trucks', protect, truckRoutes);
 const app = express();
 const server = http.createServer(app);
 
