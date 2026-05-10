@@ -1,24 +1,15 @@
 'use client';
+import { FiZap } from 'react-icons/fi';
 
-interface Props { alerts: string[]; }
-
-export default function AlertBanner({ alerts }: Props) {
+export default function AlertBanner({ alerts }: { alerts: string[] }) {
   if (!alerts.length) return null;
   return (
-    <div style={{
-      background: '#FFFBEB',
-      border: '1px solid #FDE68A',
-      borderRadius: 8,
-      padding: '10px 16px',
-      marginBottom: 20
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#92400E', marginBottom: 6 }}>
-        ⚡ Live Events
+    <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-6">
+      <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-3">
+        <FiZap /> Live Events
       </div>
       {alerts.map((a, i) => (
-        <div key={i} style={{ fontSize: 13, color: '#78350F', lineHeight: 1.8 }}>
-          {a}
-        </div>
+        <p key={i} className="text-sm text-amber-800 leading-7">{a}</p>
       ))}
     </div>
   );

@@ -1,55 +1,36 @@
 'use client';
 import { useState } from 'react';
+import { FiHash, FiUser, FiTruck } from 'react-icons/fi';
 import { api } from '../lib/api';
 import Input from './Input';
 
-interface Props {
-  onSave: () => void;
-  onCancel: () => void;
-}
+interface Props { onSave: () => void; onCancel: () => void; }
 
 export default function TruckForm({ onSave, onCancel }: Props) {
   const [form, setForm] = useState({ plateNumber: '', driverName: '', capacity: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const set = (k: keyof typeof form) => (v: string) =>
-    setForm(f => ({ ...f, [k]: v }));
+  const set = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    if (!form.plateNumber || !form.driverName || !form.capacity) {
-      setError('All fields are required.'); return;
-    }
+    if (!form.plateNumber || !form.driverName || !form.capacity) { setError('All fields required.'); return; }
     setLoading(true); setError('');
-    try {
-      await api.createTruck({ ...form, capacity: +form.capacity });
-      onSave();
-    } catch (e: any) {
-      setError(e.message ?? 'Failed to save.');
-    } finally { setLoading(false); }
+    try { await api.createTruck({ ...form, capacity: +form.capacity }); onSave(); }
+    catch (e: any) { setError(e.message ?? 'Failed.'); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <Input label="Plate Number" value={form.plateNumber} onChange={set('plateNumber')} placeholder="ABC-123" />
-        <Input label="Driver Name"  value={form.driverName}  onChange={set('driverName')}  placeholder="Ali Hassan" />
-        <Input label="Capacity (kg)" value={form.capacity}   onChange={set('capacity')}    type="number" placeholder="5000" />
-      </div>
-
-      {error && <div style={{ fontSize: 13, color: '#EF4444' }}>{error}</div>}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <button
-          onClick={submit} disabled={loading}
-          style={{ padding: '8px 20px', background: '#0F0F0F', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 14 }}
-        >
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <Input label="Plate Number"   value={form.plateNumber} onChange={set('plateNumber')} placeholder="ABC-123"  icon={<FiHash />} />
+      <Input label="Driver Name"    value={form.driverName}  onChange={set('driverName')}  placeholder="Ali Hassan" icon={<FiUser />} />
+      <Input label="Capacity (kg)"  value={form.capacity}    onChange={set('capacity')}    placeholder="5000" type="number" icon={<FiTruck />} />
+      {error && <p className="md:col-span-2 text-sm text-red-500">{error}</p>}
+      <div className="md:col-span-2 flex items-center gap-4 pt-2">
+        <button onClick={submit} disabled={loading} className="h-12 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-semibold transition-all">
           {loading ? 'Saving...' : 'Save Truck'}
         </button>
-        <button
-          onClick={onCancel}
-          style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #E5E7EB', borderRadius: 7, cursor: 'pointer', fontSize: 14 }}
-        >
+        <button onClick={onCancel} className="h-12 px-6 rounded-2xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-medium transition-all">
           Cancel
         </button>
       </div>

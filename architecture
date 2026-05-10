@@ -14,3 +14,11 @@
     │   └── middleware/
     ├── nginx/
     └── docker-compose.yml
+
+
+
+
+
+    curl -X POST http://localhost/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Admin","email":"admin@goblet.com","password":"goblet123","role":"admin"}'

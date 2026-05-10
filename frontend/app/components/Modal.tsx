@@ -1,5 +1,7 @@
 'use client';
 import { ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiX } from 'react-icons/fi';
 
 interface Props {
   open: boolean;
@@ -9,34 +11,28 @@ interface Props {
 }
 
 export default function Modal({ open, onClose, title, children }: Props) {
-  if (!open) return null;
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.35)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 50
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#fff', borderRadius: 12,
-          padding: 28, minWidth: 480, maxWidth: 560,
-          width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{title}</h2>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9CA3AF', lineHeight: 1 }}
-          >×</button>
+    <AnimatePresence>
+      {open && (
+        <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.25 }}
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-8"
+          >
+            <div className="flex items-center justify-between mb-7">
+              <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
+              <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-all">
+                <FiX />
+              </button>
+            </div>
+            {children}
+          </motion.div>
         </div>
-        {children}
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }

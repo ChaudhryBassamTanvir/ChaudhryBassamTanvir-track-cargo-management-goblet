@@ -1,15 +1,31 @@
+// app/tracking/page.tsx
+
 'use client';
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect } from 'react';
+
+import {
+  FiMapPin,
+  FiTruck,
+  FiNavigation,
+  FiActivity,
+  FiUsers,
+} from 'react-icons/fi';
+
 import { api, Truck } from '../lib/api';
+
 import { useSocket } from '../lib/useSocket';
+
 import StatusBadge from '../components/StatusBadge';
 
-// Simple SVG-based map (no external map lib needed)
+/* -------------------------------------------------------------------------- */
+/*                                   MAP UI                                   */
+/* -------------------------------------------------------------------------- */
+
 function PakistanMap({ trucks }: { trucks: Truck[] }) {
-  // Major city coordinates mapped to SVG space (Pakistan bounding box)
   const toSVG = (lat: number, lng: number) => ({
     x: ((lng - 60.5) / (77.5 - 60.5)) * 560 + 20,
-    y: ((37.5 - lat) / (37.5 - 23.5)) * 380 + 20
+    y: ((37.5 - lat) / (37.5 - 23.5)) * 380 + 20,
   });
 
   const cities = [
@@ -23,82 +39,373 @@ function PakistanMap({ trucks }: { trucks: Truck[] }) {
   ];
 
   return (
-    <svg width="100%" viewBox="0 0 600 420" style={{ background: '#F0F9FF', borderRadius: 10 }}>
-      {/* Grid lines */}
-      {[...Array(8)].map((_, i) => (
-        <line key={i} x1={20 + i * 70} y1="20" x2={20 + i * 70} y2="400" stroke="#DBEAFE" strokeWidth="0.5" />
-      ))}
-      {[...Array(7)].map((_, i) => (
-        <line key={i} x1="20" y1={20 + i * 60} x2="580" y2={20 + i * 60} stroke="#DBEAFE" strokeWidth="0.5" />
-      ))}
+    <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm overflow-hidden">
+      
+      <div className="flex items-center justify-between mb-5">
+        
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">
+            Live Fleet Map
+          </h2>
 
-      {/* Cities */}
-      {cities.map(c => {
-        const { x, y } = toSVG(c.lat, c.lng);
-        return (
-          <g key={c.name}>
-            <circle cx={x} cy={y} r={4} fill="#93C5FD" stroke="#3B82F6" strokeWidth="1" />
-            <text x={x + 7} y={y + 4} fontSize="10" fill="#6B7280">{c.name}</text>
-          </g>
-        );
-      })}
+          <p className="text-sm text-slate-500 mt-1">
+            Real-time truck positions across Pakistan
+          </p>
+        </div>
 
-      {/* Trucks */}
-      {trucks.map(t => {
-        const { x, y } = toSVG(t.location?.lat ?? 30, t.location?.lng ?? 70);
-        const color = t.status === 'in-transit' ? '#8B5CF6' : t.status === 'maintenance' ? '#F97316' : '#10B981';
-        return (
-          <g key={t._id}>
-            <circle cx={x} cy={y} r={8} fill={color} opacity={0.2} />
-            <circle cx={x} cy={y} r={5} fill={color} />
-            <text x={x + 10} y={y - 6} fontSize="10" fill="#374151" fontWeight="600">{t.plateNumber}</text>
-          </g>
-        );
-      })}
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-700 text-xl">
+          <FiNavigation />
+        </div>
+      </div>
 
-      <text x="20" y="415" fontSize="10" fill="#9CA3AF">Pakistan · Major Routes</text>
-    </svg>
+      <svg
+        width="100%"
+        viewBox="0 0 600 420"
+        className="bg-gradient-to-br from-slate-50 to-sky-50 rounded-3xl"
+      >
+        
+        {/* GRID */}
+        {[...Array(8)].map((_, i) => (
+          <line
+            key={i}
+            x1={20 + i * 70}
+            y1="20"
+            x2={20 + i * 70}
+            y2="400"
+            stroke="#CBD5E1"
+            strokeWidth="0.5"
+          />
+        ))}
+
+        {[...Array(7)].map((_, i) => (
+          <line
+            key={i}
+            x1="20"
+            y1={20 + i * 60}
+            x2="580"
+            y2={20 + i * 60}
+            stroke="#CBD5E1"
+            strokeWidth="0.5"
+          />
+        ))}
+
+        {/* CITIES */}
+        {cities.map((c) => {
+          const { x, y } = toSVG(c.lat, c.lng);
+
+          return (
+            <g key={c.name}>
+              
+              <circle
+                cx={x}
+                cy={y}
+                r={5}
+                fill="#2563EB"
+              />
+
+              <circle
+                cx={x}
+                cy={y}
+                r={10}
+                fill="#2563EB"
+                opacity={0.15}
+              />
+
+              <text
+                x={x + 8}
+                y={y + 4}
+                fontSize="11"
+                fill="#475569"
+                fontWeight="600"
+              >
+                {c.name}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* TRUCKS */}
+        {trucks.map((t) => {
+          const { x, y } = toSVG(
+            t.location?.lat ?? 30,
+            t.location?.lng ?? 70
+          );
+
+          const color =
+            t.status === 'in-transit'
+              ? '#8B5CF6'
+              : t.status === 'maintenance'
+              ? '#F97316'
+              : '#10B981';
+
+          return (
+            <g key={t._id}>
+              
+              <circle
+                cx={x}
+                cy={y}
+                r={16}
+                fill={color}
+                opacity={0.12}
+              />
+
+              <circle
+                cx={x}
+                cy={y}
+                r={9}
+                fill={color}
+              />
+
+              <circle
+                cx={x}
+                cy={y}
+                r={4}
+                fill="#fff"
+              />
+
+              <text
+                x={x + 12}
+                y={y - 10}
+                fontSize="10"
+                fill="#0F172A"
+                fontWeight="700"
+              >
+                {t.plateNumber}
+              </text>
+            </g>
+          );
+        })}
+
+        <text
+          x="20"
+          y="415"
+          fontSize="10"
+          fill="#94A3B8"
+        >
+          Goblet Logistics · Pakistan Live Fleet Network
+        </text>
+      </svg>
+    </div>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                TRACKING PAGE                               */
+/* -------------------------------------------------------------------------- */
+
 export default function TrackingPage() {
   const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [selected, setSelected] = useState<Truck | null>(null);
 
-  useEffect(() => { api.getTrucks().then(setTrucks); }, []);
+  const [selected, setSelected] =
+    useState<Truck | null>(null);
 
-  useSocket('db:change', () => { api.getTrucks().then(setTrucks); });
+  useEffect(() => {
+    api.getTrucks().then(setTrucks);
+  }, []);
+
+  useSocket('db:change', () => {
+    api.getTrucks().then(setTrucks);
+  });
 
   return (
-    <div style={{ padding: '40px 36px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 6px', letterSpacing: -0.5 }}>Live Tracking</h1>
-      <p style={{ color: '#9CA3AF', margin: '0 0 24px', fontSize: 13 }}>Real-time fleet positions · updates via WebSocket</p>
+    <div className="min-h-screen bg-[#F6F8FB] p-6 lg:p-10">
+      
+      {/* HEADER */}
+      <div className="mb-10">
+        
+        <p className="uppercase tracking-[0.25em] text-xs font-semibold text-slate-400">
+          Fleet Monitoring
+        </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20 }}>
+        <h1 className="text-4xl font-bold text-slate-900 mt-3">
+          Live Tracking
+        </h1>
+
+        <p className="text-slate-500 mt-3 max-w-2xl">
+          Monitor your active trucks, routes and delivery
+          operations in real-time using live WebSocket updates.
+        </p>
+      </div>
+
+      {/* STATS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+          
+          <div className="flex items-center justify-between">
+            
+            <div>
+              <p className="text-sm text-slate-500">
+                Total Fleet
+              </p>
+
+              <h2 className="text-4xl font-bold text-slate-900 mt-3">
+                {trucks.length}
+              </h2>
+            </div>
+
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl text-slate-700">
+              <FiTruck />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+          
+          <div className="flex items-center justify-between">
+            
+            <div>
+              <p className="text-sm text-slate-500">
+                Active Trucks
+              </p>
+
+              <h2 className="text-4xl font-bold text-emerald-500 mt-3">
+                {
+                  trucks.filter(
+                    (t) => t.status === 'in-transit'
+                  ).length
+                }
+              </h2>
+            </div>
+
+            <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center text-2xl text-emerald-600">
+              <FiActivity />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+          
+          <div className="flex items-center justify-between">
+            
+            <div>
+              <p className="text-sm text-slate-500">
+                Drivers Active
+              </p>
+
+              <h2 className="text-4xl font-bold text-violet-500 mt-3">
+                {
+                  trucks.filter((t) => t.driverName)
+                    .length
+                }
+              </h2>
+            </div>
+
+            <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center text-2xl text-violet-600">
+              <FiUsers />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+        
+        {/* MAP */}
         <PakistanMap trucks={trucks} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Fleet ({trucks.length})</div>
-          {trucks.map(t => (
-            <div key={t._id} onClick={() => setSelected(t === selected ? null : t)}
-              style={{
-                background: selected?._id === t._id ? '#F5F3FF' : '#fff',
-                border: `1px solid ${selected?._id === t._id ? '#8B5CF6' : '#F3F4F6'}`,
-                borderRadius: 9, padding: '12px 14px', cursor: 'pointer'
-              }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 600, fontSize: 13 }}>{t.plateNumber}</span>
-                <StatusBadge status={t.status} />
-              </div>
-              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>{t.driverName}</div>
-              {selected?._id === t._id && (
-                <div style={{ marginTop: 10, fontSize: 12, color: '#6B7280', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <div>📍 {t.location?.lat?.toFixed(4)}, {t.location?.lng?.toFixed(4)}</div>
-                  <div>⚖️ Capacity: {t.capacity.toLocaleString()} kg</div>
-                </div>
-              )}
+        {/* SIDEBAR */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm h-fit">
+          
+          <div className="flex items-center justify-between mb-6">
+            
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">
+                Fleet
+              </h2>
+
+              <p className="text-sm text-slate-500 mt-1">
+                {trucks.length} trucks available
+              </p>
             </div>
-          ))}
+
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-700 text-lg">
+              <FiTruck />
+            </div>
+          </div>
+
+          <div className="space-y-4 max-h-[700px] overflow-y-auto pr-1">
+            
+            {trucks.map((t) => (
+              <div
+                key={t._id}
+                onClick={() =>
+                  setSelected(
+                    t._id === selected?._id ? null : t
+                  )
+                }
+                className={`rounded-3xl border p-5 cursor-pointer transition-all duration-300 ${
+                  selected?._id === t._id
+                    ? 'border-violet-300 bg-violet-50'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                
+                <div className="flex items-start justify-between">
+                  
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      {t.plateNumber}
+                    </h3>
+
+                    <p className="text-sm text-slate-500 mt-1">
+                      {t.driverName || 'No Driver'}
+                    </p>
+                  </div>
+
+                  <StatusBadge status={t.status} />
+                </div>
+
+                {/* EXPANDED */}
+                {selected?._id === t._id && (
+                  <div className="mt-5 pt-5 border-t border-slate-200 space-y-4 animate-in fade-in duration-300">
+                    
+                    <div className="flex items-center gap-3 text-sm text-slate-700">
+                      
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                        <FiMapPin />
+                      </div>
+
+                      <span>
+                        {t.location?.lat?.toFixed(4)},
+                        {' '}
+                        {t.location?.lng?.toFixed(4)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-sm text-slate-700">
+                      
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                        <FiTruck />
+                      </div>
+
+                      <span>
+                        Capacity:{' '}
+                        {t.capacity.toLocaleString()} kg
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {trucks.length === 0 && (
+              <div className="text-center py-16">
+                
+                <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-3xl text-slate-500 mb-5">
+                  <FiTruck />
+                </div>
+
+                <h3 className="text-xl font-bold text-slate-900">
+                  No Trucks Found
+                </h3>
+
+                <p className="text-slate-500 mt-2">
+                  No fleet vehicles are currently available.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

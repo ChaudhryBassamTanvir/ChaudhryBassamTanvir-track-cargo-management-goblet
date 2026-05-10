@@ -1,4 +1,5 @@
 'use client';
+import { FiTrash2 } from 'react-icons/fi';
 import { Cargo } from '../lib/api';
 import StatusBadge from './StatusBadge';
 
@@ -9,75 +10,64 @@ interface Props {
 }
 
 const NEXT: Record<string, string[]> = {
-  pending:      ['loaded', 'failed'],
-  loaded:       ['in-transit', 'failed'],
+  pending: ['loaded', 'failed'],
+  loaded: ['in-transit', 'failed'],
   'in-transit': ['delivered', 'failed'],
-  delivered:    [],
-  failed:       ['pending'],
+  delivered: [],
+  failed: ['pending'],
 };
 
 export default function CargoTable({ cargo, onStatusChange, onDelete }: Props) {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-      <thead>
-        <tr style={{ borderBottom: '2px solid #F3F4F6', color: '#9CA3AF', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          {['Tracking ID', 'Route', 'Weight', 'Truck', 'Status', 'Actions'].map(h => (
-            <th key={h} style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 500 }}>{h}</th>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
+            {['Tracking ID', 'Route', 'Weight', 'Truck', 'Status', 'Actions'].map(h => (
+              <th key={h} className="text-left px-6 py-4 font-semibold">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {cargo.map(c => (
+            <tr key={c._id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+              <td className="px-6 py-4 font-mono text-xs text-slate-500">{c.trackingId}</td>
+              <td className="px-6 py-4">
+                <span className="text-slate-800">{c.origin}</span>
+                <span className="text-slate-300 mx-2">→</span>
+                <span className="text-slate-800">{c.destination}</span>
+              </td>
+              <td className="px-6 py-4 text-slate-500">{c.weight} kg</td>
+              <td className="px-6 py-4">
+                {c.truck ? (
+                  <div>
+                    <p className="font-semibold text-slate-800">{c.truck.plateNumber}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{c.truck.driverName}</p>
+                  </div>
+                ) : <span className="text-slate-300">—</span>}
+              </td>
+              <td className="px-6 py-4"><StatusBadge status={c.status} /></td>
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(NEXT[c.status] ?? []).map(s => (
+                    <button key={s} onClick={() => onStatusChange(c._id, s)}
+                      className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all font-medium text-slate-600">
+                      {s}
+                    </button>
+                  ))}
+                  <button onClick={() => onDelete(c._id)}
+                    className="p-1.5 rounded-xl border border-red-100 bg-red-50 hover:bg-red-100 text-red-500 transition-all">
+                    <FiTrash2 size={13} />
+                  </button>
+                </div>
+              </td>
+            </tr>
           ))}
-        </tr>
-      </thead>
-      <tbody>
-        {cargo.map(c => (
-          <tr key={c._id} style={{ borderBottom: '1px solid #F9FAFB' }}>
-            <td style={{ padding: '13px 14px', fontFamily: 'monospace', fontSize: 12, color: '#6B7280' }}>
-              {c.trackingId}
-            </td>
-            <td style={{ padding: '13px 14px' }}>
-              <span style={{ fontSize: 13 }}>{c.origin}</span>
-              <span style={{ color: '#D1D5DB', margin: '0 6px' }}>→</span>
-              <span style={{ fontSize: 13 }}>{c.destination}</span>
-            </td>
-            <td style={{ padding: '13px 14px', color: '#6B7280' }}>{c.weight} kg</td>
-            <td style={{ padding: '13px 14px', fontSize: 12, color: '#6B7280' }}>
-              {c.truck
-                ? <><strong>{c.truck.plateNumber}</strong><br />{c.truck.driverName}</>
-                : '—'}
-            </td>
-            <td style={{ padding: '13px 14px' }}>
-              <StatusBadge status={c.status} />
-            </td>
-            <td style={{ padding: '13px 14px' }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {(NEXT[c.status] ?? []).map(s => (
-                  <button
-                    key={s}
-                    onClick={() => onStatusChange(c._id, s)}
-                    style={{
-                      padding: '4px 10px', fontSize: 11, borderRadius: 5,
-                      border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer'
-                    }}
-                  >{s}</button>
-                ))}
-                <button
-                  onClick={() => onDelete(c._id)}
-                  style={{
-                    padding: '4px 8px', fontSize: 11, borderRadius: 5,
-                    border: '1px solid #FEE2E2', background: '#FEF2F2',
-                    color: '#EF4444', cursor: 'pointer'
-                  }}
-                >delete</button>
-              </div>
-            </td>
-          </tr>
-        ))}
-        {cargo.length === 0 && (
-          <tr>
-            <td colSpan={6} style={{ padding: 48, textAlign: 'center', color: '#D1D5DB', fontSize: 14 }}>
-              No cargo entries yet.
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+          {cargo.length === 0 && (
+            <tr><td colSpan={6} className="px-6 py-20 text-center text-slate-300 text-sm">No cargo entries yet.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
