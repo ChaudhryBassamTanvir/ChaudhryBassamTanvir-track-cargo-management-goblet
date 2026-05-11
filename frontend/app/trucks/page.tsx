@@ -11,6 +11,9 @@ import {
   FiTool,
   FiCheckCircle,
 } from 'react-icons/fi';
+// add this import at top
+import { useSocket } from '../lib/useSocket';
+
 
 import { api, Truck } from '../lib/api';
 
@@ -42,7 +45,9 @@ export default function TrucksPage() {
       (t) => t.status === 'maintenance'
     ).length,
   };
-
+// add inside the component after useEffect
+useSocket('truck:update', () => load());
+useSocket('db:change',    () => load());
   return (
     <div className="min-h-screen bg-[#F6F8FB] p-6 lg:p-10">
       
